@@ -1,8 +1,8 @@
 #include "Cache.hpp"
 #include <iostream>
 #include <stdexcept>
+#include <algorithm>
 #include <cstdint>
-#include <algorithm>  // Para std::min
 
 Cache::Cache(int tamano, int tamanoBloque, int asociatividad) :
     tamanoCache(tamano), tamanoBloque(tamanoBloque), asociatividad(asociatividad),
@@ -13,129 +13,77 @@ Cache::Cache(int tamano, int tamanoBloque, int asociatividad) :
     }
 
     numConjuntos = tamanoCache / (tamanoBloque * asociatividad);
-    if ((numConjuntos & (numConjuntos - 1)) != 0) {
-        throw std::invalid_argument("Número de conjuntos debe ser potencia de 2");
+    if (numConjuntos == 0) {
+        throw std::invalid_argument("Número de conjuntos no puede ser cero");
     }
 
     cache.resize(numConjuntos, std::vector<LineaCache>(asociatividad));
-    listasLRU.resize(numConjuntos);
-    mapaEtiquetas.resize(numConjuntos);
+    aciertosPorConjunto.resize(numConjuntos, 0);
+    fallosPorConjunto.resize(numConjuntos, 0);
 }
 
-bool Cache::manejarBloqueFrecuente(int conjunto, uint32_t etiqueta) {
-    auto& mapa = mapaEtiquetas[conjunto];
-    auto it = mapa.find(etiqueta);
+void Cache::actualizarComoMRU(int conjunto, int via) {
+    if (conjunto < 0 || conjunto >= numConjuntos || via < 0 || via >= asociatividad) return;
     
-    if (it != mapa.end() && it->second->contadorAccesos > 3) {
-        // Bloque muy frecuente - evitar reemplazo
-        auto& listaLRU = listasLRU[conjunto];
-        listaLRU.erase(it->second->iteradorLRU);
-        listaLRU.push_front(etiqueta);
-        it->second->iteradorLRU = listaLRU.begin();
-        return true;
+    for (auto& linea : cache[conjunto]) {
+        if (linea.valido && linea.contadorAccesos > 0) {
+            linea.contadorAccesos--;
+        }
     }
-    return false;
+    cache[conjunto][via].contadorAccesos = asociatividad;
 }
 
-void Cache::actualizarLRU(int conjunto, uint32_t etiqueta, bool esAcierto) {
-    auto& listaLRU = listasLRU[conjunto];
-    auto& mapa = mapaEtiquetas[conjunto];
+std::size_t Cache::encontrarLRU(int conjunto) const {
+    if (conjunto < 0 || conjunto >= numConjuntos) return 0;
     
-    auto it = mapa.find(etiqueta);
-    if (it != mapa.end()) {
-        if (esAcierto) {
-            it->second->contadorAccesos++;
-        }
-        
-        // Mover al frente solo si es acceso frecuente
-        if (it->second->contadorAccesos > 2) {
-            listaLRU.erase(it->second->iteradorLRU);
-            listaLRU.push_front(etiqueta);
-            it->second->iteradorLRU = listaLRU.begin();
+    std::size_t viaLRU = 0;
+    int minAccesos = cache[conjunto][0].contadorAccesos;
+    
+    for (std::size_t via = 1; via < cache[conjunto].size(); ++via) {
+        if (cache[conjunto][via].contadorAccesos < minAccesos) {
+            minAccesos = cache[conjunto][via].contadorAccesos;
+            viaLRU = via;
         }
     }
+    return viaLRU;
 }
 
 bool Cache::acceder(int direccion) {
-    uint32_t indiceConjunto = (direccion / tamanoBloque) & (numConjuntos - 1);
+    if (direccion < 0) return false;
+    
+    uint32_t conjunto = (direccion / tamanoBloque) & (numConjuntos - 1);
+    if (conjunto >= cache.size()) return false;
+    
     uint32_t etiqueta = direccion / (tamanoBloque * numConjuntos);
-
-    // 1. Verificar si es un bloque frecuente que debemos proteger
-    if (manejarBloqueFrecuente(indiceConjunto, etiqueta)) {
-        aciertos++;
-        return true;
+    
+    for (std::size_t via = 0; via < cache[conjunto].size(); ++via) {
+        if (cache[conjunto][via].valido && cache[conjunto][via].etiqueta == etiqueta) {
+            cache[conjunto][via].contadorAccesos++;
+            actualizarComoMRU(conjunto, via);
+            aciertos++;
+            aciertosPorConjunto[conjunto]++;
+            return true;
+        }
     }
-
-    // 2. Búsqueda normal
-    auto& conjunto = cache[indiceConjunto];
-    auto& listaLRU = listasLRU[indiceConjunto];
-    auto& mapa = mapaEtiquetas[indiceConjunto];
-
-    auto it = mapa.find(etiqueta);
-    if (it != mapa.end()) {
-        aciertos++;
-        actualizarLRU(indiceConjunto, etiqueta, true);
-        return true;
-    }
-
-    // 3. Manejo de fallo
+    
+    std::size_t viaVictima = encontrarLRU(conjunto);
+    if (viaVictima >= cache[conjunto].size()) viaVictima = 0;
+    
+    cache[conjunto][viaVictima].inicializar(etiqueta, true, false);
+    actualizarComoMRU(conjunto, viaVictima);
     fallos++;
-    LineaCache* lineaAReemplazar = nullptr;
-
-    if (listaLRU.size() < static_cast<size_t>(asociatividad)) {
-        for (auto& linea : conjunto) {
-            if (!linea.valido) {
-                lineaAReemplazar = &linea;
-                break;
-            }
-        }
-    } else {
-        // Buscar línea con menos accesos recientes que no sea frecuente
-        for (auto itLRU = listaLRU.rbegin(); itLRU != listaLRU.rend(); ++itLRU) {
-            auto lineaIt = mapa.find(*itLRU);
-            if (lineaIt != mapa.end() && lineaIt->second->contadorAccesos <= 2) {
-                lineaAReemplazar = lineaIt->second;
-                mapa.erase(lineaIt);
-                break;
-            }
-        }
-        
-        // Si todas son frecuentes, reemplazar la LRU normal
-        if (!lineaAReemplazar) {
-            uint32_t etiquetaLRU = listaLRU.back();
-            auto itLinea = mapa.find(etiquetaLRU);
-            if (itLinea != mapa.end()) {
-                lineaAReemplazar = itLinea->second;
-                mapa.erase(itLinea);
-            }
-        }
-    }
-
-    if (lineaAReemplazar) {
-        lineaAReemplazar->inicializar(etiqueta, true, false, listaLRU.begin());
-        listaLRU.push_front(etiqueta);
-        lineaAReemplazar->iteradorLRU = listaLRU.begin();
-        mapa[etiqueta] = lineaAReemplazar;
-    }
-
+    fallosPorConjunto[conjunto]++;
     return false;
 }
 
 bool Cache::accederConPrefetch(int direccion) {
     bool acierto = acceder(direccion);
     
-    // Precargar bloques adyacentes de manera más inteligente
-    const int prefetchDistance = 4; // Aumentar distancia de prefetch
-    for (int i = 1; i <= prefetchDistance; i++) {
-        int prefetchAddr = direccion + i * tamanoBloque;
-        // Solo hacer prefetch si no está ya en caché
-        uint32_t prefetchConjunto = (prefetchAddr / tamanoBloque) & (numConjuntos - 1);
-        uint32_t prefetchTag = prefetchAddr / (tamanoBloque * numConjuntos);
-        
-        auto& mapa = mapaEtiquetas[prefetchConjunto];
-        if (mapa.find(prefetchTag) == mapa.end()) {
-            acceder(prefetchAddr);
-        }
+    int stride = tamanoBloque * 2;
+    int prefetchAddr = direccion + stride;
+    if (prefetchAddr >= 0 && 
+        (prefetchAddr / (tamanoBloque * numConjuntos)) == (direccion / (tamanoBloque * numConjuntos))) {
+        acceder(prefetchAddr);
     }
     
     return acierto;
@@ -148,25 +96,26 @@ void Cache::imprimirEstadisticas() const {
               << (aciertos * 100.0 / (aciertos + fallos)) << "%)\n";
     std::cout << "Fallos: " << fallos << " (" 
               << (fallos * 100.0 / (aciertos + fallos)) << "%)\n";
-    std::cout << "Tamaño caché: " << tamanoCache << " bytes\n";
-    std::cout << "Tamaño bloque: " << tamanoBloque << " bytes\n";
-    std::cout << "Asociatividad: " << asociatividad << "-way\n";
-    std::cout << "Número de conjuntos: " << numConjuntos << "\n";
+    
+    for (int c = 0; c < numConjuntos; ++c) {
+        if (aciertosPorConjunto[c] + fallosPorConjunto[c] > 0) {
+            std::cout << "Conjunto " << c << ": "
+                      << (aciertosPorConjunto[c] * 100.0 / (aciertosPorConjunto[c] + fallosPorConjunto[c]))
+                      << "% aciertos\n";
+        }
+    }
 }
 
 void Cache::imprimirEstado() const {
     std::cout << "\n=== Estado de la Caché ===\n";
-    for (size_t conjunto = 0; conjunto < cache.size(); ++conjunto) {
+    for (int conjunto = 0; conjunto < numConjuntos; ++conjunto) {
         std::cout << "Conjunto " << conjunto << ":\n";
-        for (size_t via = 0; via < cache[conjunto].size(); ++via) {
+        for (std::size_t via = 0; via < cache[conjunto].size(); ++via) {
             const auto& linea = cache[conjunto][via];
             std::cout << "  Via " << via << ": ";
             if (linea.valido) {
                 std::cout << "Tag=" << linea.etiqueta 
                           << " (Accesos=" << linea.contadorAccesos << ")";
-                if (linea.modificado) {
-                    std::cout << " [M]";
-                }
             } else {
                 std::cout << "Inválido";
             }

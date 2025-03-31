@@ -8,9 +8,7 @@ class GeneradorModelos3D {
 public:
     static std::vector<Vertice> generarCubo(float tamano);
     static std::vector<Vertice> generarPiramide(float base, float altura);
-    
-    // Nuevo método para visualización de debug
     static void imprimirVertices(const std::vector<Vertice>& vertices);
 };
 
-#endif
+#endif // GENERADORMODELOS3D_HPP

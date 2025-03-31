@@ -1,25 +1,22 @@
 #ifndef LINEACACHE_HPP
 #define LINEACACHE_HPP
 
-#include <list>
-#include <cstdint>
+#include <cstdint>  // Para uint32_t
 
 struct LineaCache {
     uint32_t etiqueta;
     bool valido;
     bool modificado;
-    int contadorAccesos;  // Nuevo campo para seguimiento de accesos frecuentes
-    std::list<uint32_t>::iterator iteradorLRU;
+    int contadorAccesos;
     
-    void inicializar(uint32_t etiq, bool val, bool mod, std::list<uint32_t>::iterator it) {
+    void inicializar(uint32_t etiq, bool val, bool mod) {
         etiqueta = etiq;
         valido = val;
         modificado = mod;
-        contadorAccesos = 0;  // Inicializar contador
-        iteradorLRU = it;
+        contadorAccesos = 0;
     }
     
     LineaCache() : etiqueta(0), valido(false), modificado(false), contadorAccesos(0) {}
 };
 
-#endif
+#endif // LINEACACHE_HPP
