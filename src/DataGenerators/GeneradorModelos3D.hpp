@@ -2,15 +2,15 @@
 #define GENERADORMODELOS3D_HPP
 
 #include <vector>
-#include "Common/Vertice.hpp"  // Incluir la definicion de Vertice
+#include "Common/Vertice.hpp"
 
 class GeneradorModelos3D {
 public:
-    // genera un cubo simple
     static std::vector<Vertice> generarCubo(float tamano);
-
-    // genera una piramide simple
     static std::vector<Vertice> generarPiramide(float base, float altura);
+    
+    // Nuevo método para visualización de debug
+    static void imprimirVertices(const std::vector<Vertice>& vertices);
 };
 
-#endif // GENERADORMODELOS3D_HPP
+#endif

@@ -1,5 +1,6 @@
 #include "GeneradorModelos3D.hpp"
 #include <cmath>
+#include <iostream>  // Incluir esta cabecera para std::cout
 
 // genera un cubo simple
 std::vector<Vertice> GeneradorModelos3D::generarCubo(float tamano) {
@@ -36,4 +37,13 @@ std::vector<Vertice> GeneradorModelos3D::generarPiramide(float base, float altur
     };
 
     return vertices;
+}
+
+void GeneradorModelos3D::imprimirVertices(const std::vector<Vertice>& vertices) {
+    std::cout << "\n=== Vertices del Modelo ===\n";
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        std::cout << "V" << i << ": (" << vertices[i].x << ", " 
+                  << vertices[i].y << ", " << vertices[i].z << ")\n";
+    }
+    std::cout << "=========================\n";
 }

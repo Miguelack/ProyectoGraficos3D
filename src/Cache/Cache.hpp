@@ -4,32 +4,33 @@
 #include <vector>
 #include <list>
 #include <unordered_map>
-#include "LineaCache.hpp"  // Incluir la definicion de LineaCache
+#include "LineaCache.hpp"
 
 class Cache {
 private:
-    int tamanoCache;               // tamano total del cache
-    int tamanoBloque;              // tamano de cada bloque
-    int asociatividad;             // numero de vias (4-way)
-    int numConjuntos;              // numero de conjuntos
+    int tamanoCache;
+    int tamanoBloque;
+    int asociatividad;
+    int numConjuntos;
 
-    std::vector<std::vector<LineaCache>> cache; // estructura del cache
-    std::vector<std::list<int>> listasLRU;      // listas LRU por conjunto
+    std::vector<std::vector<LineaCache>> cache;
+    std::vector<std::list<uint32_t>> listasLRU;
+    std::vector<std::unordered_map<uint32_t, LineaCache*>> mapaEtiquetas;
 
-    std::unordered_map<int, int> etiquetaAConjunto; // mapeo de etiqueta a conjunto
+    int aciertos;
+    int fallos;
 
-    int aciertos;                  // numero de aciertos
-    int fallos;                    // numero de fallos
+    // Nuevos métodos privados para optimización
+    bool manejarBloqueFrecuente(int conjunto, uint32_t etiqueta);
+    void actualizarLRU(int conjunto, uint32_t etiqueta, bool esAcierto);
 
 public:
-    // constructor
     Cache(int tamano, int tamanoBloque, int asociatividad);
-
-    // metodo para acceder a una direccion en el cache
     bool acceder(int direccion);
-
-    // metodo para imprimir estadisticas del cache
+    bool accederConPrefetch(int direccion);  // Nuevo método
     void imprimirEstadisticas() const;
+    void imprimirEstado() const;
+    int calcularNumConjuntos() const { return numConjuntos; }
 };
 
-#endif // CACHE_HPP
+#endif

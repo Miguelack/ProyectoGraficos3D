@@ -2,13 +2,24 @@
 #define LINEACACHE_HPP
 
 #include <list>
+#include <cstdint>
 
-// estructura para representar una linea de cache
 struct LineaCache {
-    int etiqueta;                  // etiqueta de la linea
-    bool valido;                   // indica si la linea es valida
-    bool modificado;               // indica si la linea ha sido modificada
-    std::list<int>::iterator iteradorLRU; // iterador para la politica LRU
+    uint32_t etiqueta;
+    bool valido;
+    bool modificado;
+    int contadorAccesos;  // Nuevo campo para seguimiento de accesos frecuentes
+    std::list<uint32_t>::iterator iteradorLRU;
+    
+    void inicializar(uint32_t etiq, bool val, bool mod, std::list<uint32_t>::iterator it) {
+        etiqueta = etiq;
+        valido = val;
+        modificado = mod;
+        contadorAccesos = 0;  // Inicializar contador
+        iteradorLRU = it;
+    }
+    
+    LineaCache() : etiqueta(0), valido(false), modificado(false), contadorAccesos(0) {}
 };
 
-#endif // LINEACACHE_HPP
+#endif
