@@ -13,6 +13,10 @@ struct Camara {
     float velocidadRotacion;
     float targetX, targetY, targetZ;
     float lerpFactor;
+    
+    Camara() : x(0), y(0), z(5.0f), rotX(0), rotY(0), 
+              velocidadMovimiento(0.2f), velocidadRotacion(0.05f),
+              targetX(0), targetY(0), targetZ(5.0f), lerpFactor(0.2f) {}
 };
 
 class Graficos {
