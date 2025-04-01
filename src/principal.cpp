@@ -4,30 +4,39 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <SFML/Graphics.hpp>
+#include <SFML/Window.hpp>
 #include "Cache/Cache.hpp"
 #include "DataGenerators/GeneradorDatos.hpp"
 #include "DataGenerators/GeneradorModelos3D.hpp"
 #include "Graficos/ModelViewer.hpp"
 
-// funcion para limpiar la terminal de forma multiplataforma
+// Declaraciones adelantadas de las funciones auxiliares
+void limpiarTerminal();
+void esperarEnter();
+int mostrarMenuPrincipal();
+int mostrarMenuModelado();
+void mostrarEstadisticasCache(const Cache& cache, double simTime);
+bool cargarFuente(sf::Font& font, const std::string& path);
+
+// Implementación de las funciones auxiliares
 void limpiarTerminal() {
     #ifdef _WIN32
-    int result = system("cls");
-    (void)result; // para evitar el warning de unused result
+    if (system("cls") == -1) {
+        std::cerr << "Error al limpiar terminal\n";
+    }
     #else
-    int result = system("clear");
-    (void)result; // para evitar el warning de unused result
+    if (system("clear") == -1) {
+        std::cerr << "Error al limpiar terminal\n";
+    }
     #endif
 }
 
-// funcion para pausar la ejecucion hasta que se presione enter
 void esperarEnter() {
     std::cout << "\nPresione enter para continuar...";
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     limpiarTerminal();
 }
 
-// muestra el menu principal y obtiene la seleccion del usuario
 int mostrarMenuPrincipal() {
     int opcion;
     while (true) {
@@ -37,45 +46,37 @@ int mostrarMenuPrincipal() {
         std::cout << "3. Salir\n";
         std::cout << "Seleccione una opcion (1-3): ";
         
-        if (std::cin >> opcion) {
-            if (opcion >= 1 && opcion <= 3) {
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return opcion;
-            }
-        } else {
-            std::cin.clear();
+        if (std::cin >> opcion && opcion >= 1 && opcion <= 3) {
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return opcion;
         }
         
-        std::cout << "Opcion no valida. intente nuevamente.\n";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << "Opcion no valida. Intente nuevamente.\n";
     }
 }
 
-// muestra el menu de modelado 3d y obtiene la seleccion del usuario
 int mostrarMenuModelado() {
     int opcion;
     while (true) {
-        std::cout << "\n=== menu de modelado 3d ===\n";
+        std::cout << "\n=== MENU DE MODELADO 3D ===\n";
         std::cout << "1. Visualizar cubo\n";
         std::cout << "2. Visualizar piramide\n";
         std::cout << "3. Volver al menu principal\n";
         std::cout << "Seleccione una opcion (1-3): ";
         
-        if (std::cin >> opcion) {
-            if (opcion >= 1 && opcion <= 3) {
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return opcion;
-            }
-        } else {
-            std::cin.clear();
+        if (std::cin >> opcion && opcion >= 1 && opcion <= 3) {
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return opcion;
         }
         
-        std::cout << "Opcion no valida. intente nuevamente.\n";
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::cout << "Opcion no valida. Intente nuevamente.\n";
     }
 }
 
-// muestra las estadisticas de la cache en la consola
 void mostrarEstadisticasCache(const Cache& cache, double simTime) {
     std::cout << "\n=== Estadisticas de cache ===\n";
     std::cout << "Tiempo simulacion: " << simTime << " ms\n";
@@ -83,90 +84,70 @@ void mostrarEstadisticasCache(const Cache& cache, double simTime) {
     esperarEnter();
 }
 
-// carga una fuente desde un archivo
 bool cargarFuente(sf::Font& font, const std::string& path) {
     struct stat buffer;   
-    if (stat(path.c_str(), &buffer) != 0) {
-        std::cerr << "Archivo de fuente no encontrado: " << path << "\n";
-        return false;
-    }
-    return font.loadFromFile(path);
+    return (stat(path.c_str(), &buffer) == 0) && font.loadFromFile(path);
 }
 
-// funcion principal del programa
+// Función principal
 int main() {
     try {
-        // inicializa la cache con parametros predefinidos
         Cache cache(1024, 64, 4);
-
-        // genera direcciones para pruebas de cache
         std::vector<int> addresses = GeneradorDatos::generarSecuenciaOptimizada(1024, 64, 4);
 
-        // simula accesos a la cache y mide el tiempo
         auto startSim = std::chrono::high_resolution_clock::now();
-        for (size_t i = 0; i < addresses.size(); ++i) {
-            cache.accederConPrefetch(addresses[i]);
+        for (int addr : addresses) {
+            cache.accederConPrefetch(addr);
         }
-        auto endSim = std::chrono::high_resolution_clock::now();
-
-        // calcula el tiempo de simulacion
         double simTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-            endSim - startSim).count();
+            std::chrono::high_resolution_clock::now() - startSim).count();
 
-        // carga la fuente para la interfaz grafica
         sf::Font font;
-        bool fontLoaded = cargarFuente(font, "arial.ttf");
-        if (!fontLoaded) {
+        if (!cargarFuente(font, "arial.ttf")) {
             std::cerr << "Advertencia: usando fuente por defecto\n";
         }
 
-        // determina si el modo grafico esta disponible
         bool graphicMode = (getenv("DISPLAY") != nullptr);
         int option;
         
-        // bucle principal del menu
         do {
             option = mostrarMenuPrincipal();
             
             switch (option) {
-                case 1: {
-                    // muestra estadisticas de cache
+                case 1:
                     mostrarEstadisticasCache(cache, simTime);
                     break;
-                }
                 case 2: {
-                    // menu de modelado 3d
                     int modelOption = mostrarMenuModelado();
-                    switch (modelOption) {
-                        case 1: {
-                            // genera y visualiza un cubo
-                            std::vector<Vertice> cube = GeneradorModelos3D::generarCubo(2.0f);
-                            ModelViewer::visualizar(cube, cache, simTime, graphicMode, font);
-                            break;
+                    if (modelOption == 1 || modelOption == 2) {
+                        sf::RenderWindow ventana(sf::VideoMode(1024, 768), "Visualizador 3D");
+                        if (modelOption == 1) {
+                            ModelViewer::visualizar(
+                                GeneradorModelos3D::generarCubo(2.0f), 
+                                cache, 
+                                simTime, 
+                                graphicMode, 
+                                font,
+                                ventana
+                            );
+                        } else {
+                            ModelViewer::visualizar(
+                                GeneradorModelos3D::generarPiramide(3.0f, 2.0f), 
+                                cache, 
+                                simTime, 
+                                graphicMode, 
+                                font,
+                                ventana
+                            );
                         }
-                        case 2: {
-                            // genera y visualiza una piramide
-                            std::vector<Vertice> pyramid = GeneradorModelos3D::generarPiramide(3.0f, 2.0f);
-                            ModelViewer::visualizar(pyramid, cache, simTime, graphicMode, font);
-                            break;
-                        }
-                        case 3:
-                            limpiarTerminal();
-                            break;
                     }
                     break;
                 }
-                case 3:
-                    std::cout << "Saliendo del programa...\n";
-                    break;
             }
         } while (option != 3);
 
     } catch (const std::exception& e) {
         std::cerr << "\nError: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    } catch (...) {
-        std::cerr << "\nError desconocido\n";
         return EXIT_FAILURE;
     }
 

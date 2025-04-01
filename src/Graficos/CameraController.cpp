@@ -1,18 +1,20 @@
-// archivo de cabecera de la clase CameraController
-#include "CameraController.hpp"
-// archivo de cabecera para el estado de entrada
-#include "InputHandler.hpp"
-// biblioteca para funciones matemáticas
+#include "Graficos/CameraController.hpp"
+#include "Graficos/InputHandler.hpp"
 #include <cmath>
-// biblioteca para algoritmos como std::clamp
 #include <algorithm>
 
-// inicialización de constantes estáticas
-const float CameraController::VELOCIDAD_MOVIMIENTO = 0.2f;
-const float CameraController::VELOCIDAD_ROTACION = 0.05f;
-const float CameraController::FACTOR_LERP = 0.2f;
+// Constantes ajustadas para movimiento más lento y realista
+const float CameraController::VELOCIDAD_MOVIMIENTO = 0.05f;  // Reducida para mayor realismo
+const float CameraController::VELOCIDAD_ROTACION = 0.002f;   // Sensibilidad más baja
+const float CameraController::FACTOR_LERP = 0.1f;           // Interpolación más suave
 
-// actualiza la posición y rotación de la cámara
+// Constantes para movimiento vertical
+const float ACELERACION_VERTICAL = 0.3f;
+const float VELOCIDAD_VERTICAL_MAX = 0.8f;
+const float ALTURA_MAXIMA = 2.0f;
+const float ALTURA_MINIMA = 0.5f;
+const float LIMITE_ROTACION_X = 1.48f; // ~85° en radianes
+
 void CameraController::actualizar(Camara& camara, const EstadoEntrada& entrada, float deltaTiempo) {
     // asegura que deltaTime esté en un rango válido
     deltaTiempo = std::clamp(deltaTiempo, 0.001f, 0.1f);
@@ -25,7 +27,7 @@ void CameraController::actualizar(Camara& camara, const EstadoEntrada& entrada, 
     const float senoY = sin(camara.rotY);
     const float cosenoY = cos(camara.rotY);
     
-    // movimiento relativo basado en entrada
+    // MOVIMIENTO HORIZONTAL (WASD) - Más lento y suave
     if (entrada.w) { // adelante
         camara.objetivoX += senoY * factorMovimiento;
         camara.objetivoZ += cosenoY * factorMovimiento;
@@ -43,19 +45,37 @@ void CameraController::actualizar(Camara& camara, const EstadoEntrada& entrada, 
         camara.objetivoZ -= senoY * factorMovimiento;
     }
     
-    // movimiento vertical
-    if (entrada.espacio) camara.objetivoY -= factorMovimiento;
-    if (entrada.ctrl) camara.objetivoY += factorMovimiento;
+    // MOVIMIENTO VERTICAL (ESPACIO/SHIFT) - Estilo CS 1.6
+    static float velocidadVerticalActual = 0.0f;
     
-    // rotación de cámara
-    if (entrada.arriba) camara.rotX -= factorRotacion;
-    if (entrada.abajo) camara.rotX += factorRotacion;
-    if (entrada.izquierda) camara.rotY -= factorRotacion;
-    if (entrada.derecha) camara.rotY += factorRotacion;
+    if (entrada.espacio) {
+        velocidadVerticalActual += ACELERACION_VERTICAL * deltaTiempo;
+    } 
+    else if (entrada.ctrl) {
+        velocidadVerticalActual -= ACELERACION_VERTICAL * deltaTiempo;
+    } 
+    else {
+        // Fricción/desaceleración cuando no hay entrada
+        velocidadVerticalActual *= 0.8f;
+    }
     
-    // normaliza los ángulos de rotación
-    camara.rotX = fmod(camara.rotX, 2.0f * M_PI);
-    camara.rotY = fmod(camara.rotY, 2.0f * M_PI);
+    velocidadVerticalActual = std::clamp(velocidadVerticalActual, -VELOCIDAD_VERTICAL_MAX, VELOCIDAD_VERTICAL_MAX);
+    camara.objetivoY += velocidadVerticalActual * factorMovimiento;
+    
+    // Limitar altura de la cámara
+    camara.objetivoY = std::clamp(camara.objetivoY, ALTURA_MINIMA, ALTURA_MAXIMA);
+    
+    // ROTACIÓN CON RATÓN - Estilo FPS
+    if (entrada.mouseCapturado) {
+        camara.rotY -= entrada.mouseX * factorRotacion;
+        camara.rotX -= entrada.mouseY * factorRotacion;
+    }
+    
+    // Limitar rotación vertical como en FPS
+    camara.rotX = std::clamp(camara.rotX, -LIMITE_ROTACION_X, LIMITE_ROTACION_X);
+    
+    // normaliza el ángulo de rotación horizontal
+    camara.rotY = fmod(camara.rotY, 2.0f * static_cast<float>(M_PI));
     
     // aplica interpolación lineal para movimiento suave
     camara.x += (camara.objetivoX - camara.x) * FACTOR_LERP;
@@ -63,7 +83,6 @@ void CameraController::actualizar(Camara& camara, const EstadoEntrada& entrada, 
     camara.z += (camara.objetivoZ - camara.z) * FACTOR_LERP;
 }
 
-// transforma un vértice al espacio de la cámara
 void CameraController::transformarVertice(Vertice& v, const Camara& cam) {
     // Convertir a coordenadas relativas a la cámara
     float dx = v.x - cam.x;
