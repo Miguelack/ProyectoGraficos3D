@@ -1,25 +1,31 @@
-// archivo de cabecera de la clase UIHandler
+// incluye el archivo de cabecera de la clase ui handler
 #include "UIHandler.hpp"
-// biblioteca para formateo de texto
+
+// incluye biblioteca para formateo de strings
 #include <sstream>
-// biblioteca para manipulación de formato de salida
+
+// incluye biblioteca para manipulación de formato de salida
 #include <iomanip>
-// biblioteca para límites numéricos
+
+// incluye biblioteca para límites numéricos
 #include <limits>
-// biblioteca para funciones matemáticas
+
+// incluye biblioteca para funciones matemáticas
 #include <cmath>
 
-// inicializa los elementos de la interfaz de usuario con valores predeterminados
+// función para inicializar los elementos de la interfaz de usuario
 void UIHandler::inicializar(ElementosUI& ui, const sf::Font& fuente, const Cache& cache, 
                           double tiempoSimulacion, size_t cantidadVertices) {
-    // verifica si la fuente cargada es válida
+    // verifica si la fuente está cargada correctamente
     if (!fuente.getInfo().family.empty()) {
-        // stream para formatear las estadísticas
+        // crea un stream para formatear el texto
         std::ostringstream estadisticas;
+        // configura precisión de decimales
         estadisticas.precision(2);
+        // fija notación de punto fijo
         estadisticas << std::fixed;
         
-        // configura el texto con las estadísticas de la caché
+        // construye el texto de estadísticas
         estadisticas << "Estadisticas de Cache:\n"
                     << "Aciertos: " << cache.getAciertos() << " (" 
                     << static_cast<int>(cache.getTasaAciertos()) << "%)\n"
@@ -56,15 +62,17 @@ void UIHandler::inicializar(ElementosUI& ui, const sf::Font& fuente, const Cache
     }
 }
 
-// actualiza el texto que muestra la posición y rotación de la cámara
+// función para actualizar el texto de posición de la cámara
 void UIHandler::actualizarTextoPosicion(ElementosUI& ui, float x, float y, float z, 
                                       float rotX, float rotY) {
     // stream para formatear la posición
     std::ostringstream posicion;
+    // configura precisión de decimales
     posicion.precision(2);
+    // fija notación de punto fijo
     posicion << std::fixed;
     
-    // convierte la rotación de radianes a grados para mejor legibilidad
+    // convierte rotación de radianes a grados
     float rotXDeg = rotX * (180.0f / M_PI);
     float rotYDeg = rotY * (180.0f / M_PI);
     
@@ -78,12 +86,15 @@ void UIHandler::actualizarTextoPosicion(ElementosUI& ui, float x, float y, float
     ui.textoPosicion.setString(posicion.str());
 }
 
-// dibuja todos los elementos de la interfaz en la ventana especificada
+// función para dibujar todos los elementos de la interfaz
 void UIHandler::dibujar(ElementosUI& ui, sf::RenderWindow& ventana) {
-    // verifica que la ventana esté abierta antes de dibujar
+    // verifica que la ventana esté abierta
     if (ventana.isOpen()) {
+        // dibuja el texto de estadísticas
         ventana.draw(ui.textoEstadisticas);
+        // dibuja el texto de controles
         ventana.draw(ui.textoControles);
+        // dibuja el texto de posición
         ventana.draw(ui.textoPosicion);
     }
 }
