@@ -1,90 +1,101 @@
+// archivo de cabecera de la clase Renderer
 #include "Renderer.hpp"
+// controlador de cámara para transformaciones
 #include "CameraController.hpp"
+// funciones auxiliares de gráficos 3D
 #include "Graficos/Graficos.hpp"
+// biblioteca para gráficos de SFML
 #include <SFML/Graphics.hpp>
+// biblioteca con algoritmos útiles
 #include <algorithm>
 
-void Renderer::setupConnections(const std::vector<Vertice>& vertices, 
-                              std::vector<std::pair<int, int>>& connections) {
-    connections.clear();
+// configura las conexiones entre vértices para diferentes modelos 3D
+void Renderer::configurarConexiones(const std::vector<Vertice>& vertices, 
+                                  std::vector<std::pair<int, int>>& conexiones) {
+    // limpia las conexiones existentes
+    conexiones.clear();
     
+    // configura conexiones para un cubo (8 vértices)
     if (vertices.size() == 8) {
-        // Conexiones para cubo (24 aristas)
-        connections = {
-            // Cara frontal (4 aristas)
+        // 24 aristas en total para el cubo
+        conexiones = {
+            // cara frontal (4 aristas)
             {0,1}, {1,2}, {2,3}, {3,0},
-            // Cara trasera (4 aristas)
+            // cara trasera (4 aristas)
             {4,5}, {5,6}, {6,7}, {7,4},
-            // Aristas laterales (4 aristas)
+            // aristas laterales (4 aristas)
             {0,4}, {1,5}, {2,6}, {3,7},
-            // Diagonales de cara (4 aristas)
+            // diagonales de cara (4 aristas)
             {0,5}, {1,4}, {2,7}, {3,6},
-            // Diagonales espaciales (4 aristas adicionales)
+            // diagonales espaciales (4 aristas adicionales)
             {0,6}, {1,7}, {2,4}, {3,5}
         };
-    } else if (vertices.size() == 5) {
-        // Conexiones para pirámide (8 aristas)
-        connections = {
-            // Base cuadrada (4 aristas)
+    } 
+    // configura conexiones para una pirámide (5 vértices)
+    else if (vertices.size() == 5) {
+        // 8 aristas en total para la pirámide
+        conexiones = {
+            // base cuadrada (4 aristas)
             {0,1}, {1,2}, {2,3}, {3,0},
-            // Aristas laterales (4 aristas)
+            // aristas laterales (4 aristas)
             {0,4}, {1,4}, {2,4}, {3,4}
         };
     }
 }
 
-void Renderer::renderModel(sf::RenderWindow& window, 
-                         const std::vector<Vertice>& vertices,
-                         const std::vector<std::pair<int, int>>& connections,
-                         const Camera& camera) {
-    // Validación de parámetros
-    if (vertices.empty() || connections.empty() || !window.isOpen()) return;
+// renderiza un modelo 3D en la ventana especificada
+void Renderer::renderizarModelo(sf::RenderWindow& ventana, 
+                              const std::vector<Vertice>& vertices,
+                              const std::vector<std::pair<int, int>>& conexiones,
+                              const Camara& camara) {
+    // validación de parámetros de entrada
+    if (vertices.empty() || conexiones.empty() || !ventana.isOpen()) return;
 
-    // Dibujar conexiones entre vértices
-    for (const auto& conn : connections) {
-        // Verificar índices válidos con cast seguro
-        if (static_cast<size_t>(conn.first) >= vertices.size() || 
-            static_cast<size_t>(conn.second) >= vertices.size()) {
+    // dibuja todas las conexiones (aristas) del modelo
+    for (const auto& conexion : conexiones) {
+        // verifica que los índices de vértices sean válidos
+        if (static_cast<size_t>(conexion.first) >= vertices.size() || 
+            static_cast<size_t>(conexion.second) >= vertices.size()) {
             continue;
         }
 
-        // Obtener vértices de la conexión
-        Vertice v1 = vertices[conn.first];
-        Vertice v2 = vertices[conn.second];
+        // obtiene los vértices de la conexión actual
+        Vertice v1 = vertices[conexion.first];
+        Vertice v2 = vertices[conexion.second];
         
-        // Transformar vértices al espacio de la cámara
-        CameraController::transformVertex(v1, camera);
-        CameraController::transformVertex(v2, camera);
+        // transforma los vértices al espacio de la cámara
+        CameraController::transformarVertice(v1, camara);
+        CameraController::transformarVertice(v2, camara);
         
-        // Aplicar clipping y proyección
-        if (Graficos::clipLine(v1, v2)) {
+        // aplica recorte de línea (clipping) y proyección
+        if (Graficos::recortarLinea(v1, v2)) {
             const sf::Vector2f p1 = Graficos::proyectarPunto(v1);
             const sf::Vector2f p2 = Graficos::proyectarPunto(v2);
             
-            // Dibujar línea si los puntos son válidos
+            // dibuja la línea si los puntos son válidos
             if (p1.x > -1000.0f && p2.x > -1000.0f) {
-                const sf::Vertex line[] = {
+                const sf::Vertex linea[] = {
                     sf::Vertex(p1, sf::Color(180, 140, 255)),
                     sf::Vertex(p2, sf::Color(180, 140, 255))
                 };
-                window.draw(line, 2, sf::Lines);
+                ventana.draw(linea, 2, sf::Lines);
             }
         }
     }
     
-    // Dibujar vértices como puntos
-    for (const auto& vertex : vertices) {
-        Vertice v = vertex;
-        CameraController::transformVertex(v, camera);
+    // dibuja los vértices como puntos
+    for (const auto& vertice : vertices) {
+        Vertice v = vertice;
+        CameraController::transformarVertice(v, camara);
         
-        // Solo dibujar si está delante del plano cercano
+        // solo dibuja si está delante del plano cercano
         if (v.z > 0.1f) {
             const sf::Vector2f pos = Graficos::proyectarPunto(v);
             if (pos.x > -1000.0f) {
-                sf::CircleShape point(2.0f);
-                point.setFillColor(sf::Color(200, 160, 255));
-                point.setPosition(pos.x - 2.0f, pos.y - 2.0f);
-                window.draw(point);
+                sf::CircleShape punto(2.0f);
+                punto.setFillColor(sf::Color(200, 160, 255));
+                punto.setPosition(pos.x - 2.0f, pos.y - 2.0f);
+                ventana.draw(punto);
             }
         }
     }

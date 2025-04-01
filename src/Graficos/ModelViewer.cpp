@@ -1,90 +1,117 @@
-#include <iostream>  // Necesario para std::cerr
-#include <algorithm> // Necesario para std::clamp
-#include <stdexcept> // Necesario para std::runtime_error
+// biblioteca para operaciones de entrada/salida básica
+#include <iostream>
+// biblioteca con algoritmos útiles como limitar valores
+#include <algorithm>
+// biblioteca para manejo de excepciones
+#include <stdexcept>
 
+// archivos de cabecera del proyecto
 #include "ModelViewer.hpp"
 #include "InputHandler.hpp"
 #include "CameraController.hpp"
 #include "Renderer.hpp"
 #include "UIHandler.hpp"
+// bibliotecas para gráficos y manejo de ventanas
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 
-void ModelViewer::visualize(const std::vector<Vertice>& vertices, 
-                          const Cache& cache,
-                          double simulationTime, 
-                          bool graphicMode, 
-                          const sf::Font& font) {
-    if (!graphicMode) {
-        // Modo texto
-        return;
+// función principal que controla la visualización 3D
+void ModelViewer::visualizar(const std::vector<Vertice>& vertices, 
+                           const Cache& cache,
+                           double tiempoSimulacion, 
+                           bool modoGrafico, 
+                           const sf::Font& fuente) {
+    // si está en modo consola, termina la ejecución
+    if (!modoGrafico) {
+        return; // no se requiere renderizado gráfico
     }
 
-    sf::ContextSettings settings;
-    settings.antialiasingLevel = 4;
-    settings.majorVersion = 3;
-    settings.minorVersion = 3;
-    settings.depthBits = 24;
+    // configuración avanzada de la ventana
+    sf::ContextSettings configuracion;
+    configuracion.antialiasingLevel = 4; // suavizado de bordes (4x)
+    configuracion.majorVersion = 3; // versión mayor de OpenGL
+    configuracion.minorVersion = 3; // versión menor de OpenGL
+    configuracion.depthBits = 24; // bits para buffer de profundidad
 
     try {
-        sf::RenderWindow window(sf::VideoMode(1024, 768), "Simulador 3D", sf::Style::Default, settings);
-        window.setVerticalSyncEnabled(true);
-        window.setFramerateLimit(60);
+        // crea y configura la ventana principal
+        sf::RenderWindow ventana(sf::VideoMode(1024, 768), "Simulador 3D", sf::Style::Default, configuracion);
+        ventana.setVerticalSyncEnabled(true); // sincronización vertical activada
+        ventana.setFramerateLimit(60); // límite de 60 cuadros por segundo
 
-        if (!window.setActive(true)) {
-            throw std::runtime_error("No se pudo inicializar OpenGL");
+        // verifica la inicialización correcta de OpenGL
+        if (!ventana.setActive(true)) {
+            throw std::runtime_error("error al iniciar OpenGL");
         }
 
-        // Inicialización de componentes
-        std::vector<std::pair<int, int>> connections;
-        Renderer::setupConnections(vertices, connections);
+        // prepara las conexiones entre vértices para dibujar las aristas
+        std::vector<std::pair<int, int>> conexiones;
+        Renderer::configurarConexiones(vertices, conexiones);
         
-        UIHandler::UIElements ui;
-        UIHandler::init(ui, font, cache, simulationTime, vertices.size());
+        // inicializa los elementos de la interfaz de usuario
+        UIHandler::ElementosUI interfaz;
+        UIHandler::inicializar(interfaz, fuente, cache, tiempoSimulacion, vertices.size());
         
-        Camera camera;
-        InputState input;
-        sf::Clock clock;
+        // configura la cámara inicial
+        Camara camara;
+        // estado actual de las entradas del usuario
+        EstadoEntrada entrada;
+        // reloj para controlar el tiempo entre cuadros
+        sf::Clock reloj;
 
-        while (window.isOpen()) {
+        // bucle principal de la aplicación
+        while (ventana.isOpen()) {
             try {
-                float deltaTime = clock.restart().asSeconds();
-                deltaTime = std::clamp(deltaTime, 0.001f, 0.1f);
+                // calcula el tiempo entre cuadros
+                float deltaTiempo = reloj.restart().asSeconds();
+                // limita el valor para evitar problemas
+                deltaTiempo = std::clamp(deltaTiempo, 0.001f, 0.1f);
 
-                // Manejo de eventos
-                sf::Event event;
-                while (window.pollEvent(event)) {
-                    if (event.type == sf::Event::Closed || 
-                       (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)) {
-                        window.close();
+                // procesamiento de eventos del sistema
+                sf::Event evento;
+                while (ventana.pollEvent(evento)) {
+                    // cierra la ventana con ESC o la X
+                    if (evento.type == sf::Event::Closed || 
+                       (evento.type == sf::Event::KeyPressed && evento.key.code == sf::Keyboard::Escape)) {
+                        ventana.close();
                     }
-                    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R) {
-                        camera.targetX = 0; camera.targetY = 0; camera.targetZ = 5.0f;
-                        camera.rotX = 0; camera.rotY = 0;
+                    // reinicia la cámara al presionar R
+                    if (evento.type == sf::Event::KeyPressed && evento.key.code == sf::Keyboard::R) {
+                        camara.objetivoX = 0; camara.objetivoY = 0; camara.objetivoZ = 5.0f;
+                        camara.rotX = 0; camara.rotY = 0;
                     }
                 }
 
-                // Actualización
-                InputHandler::update(input);
-                CameraController::update(camera, input, deltaTime);
-                UIHandler::updatePositionText(ui, camera.x, camera.y, camera.z, camera.rotX, camera.rotY);
+                // actualiza el estado de las entradas
+                InputHandler::actualizar(entrada);
+                // mueve la cámara según las entradas
+                CameraController::actualizar(camara, entrada, deltaTiempo);
+                // actualiza la información de posición en la UI
+                UIHandler::actualizarTextoPosicion(interfaz, camara.x, camara.y, camara.z, camara.rotX, camara.rotY);
 
-                // Renderizado
-                window.clear(sf::Color::Black);
-                Renderer::renderModel(window, vertices, connections, camera);
-                UIHandler::draw(ui, window);
-                window.display();
+                // prepara el nuevo cuadro
+                ventana.clear(sf::Color::Black); // fondo negro
+                // dibuja el modelo 3D con sus conexiones
+                Renderer::renderizarModelo(ventana, vertices, conexiones, camara);
+                // dibuja los elementos de la interfaz
+                UIHandler::dibujar(interfaz, ventana);
+                // muestra el cuadro terminado
+                ventana.display();
 
             } catch (const std::exception& e) {
-                std::cerr << "Error en frame: " << e.what() << "\n";
-                if (!window.isOpen()) break;
+                // maneja errores durante la ejecución
+                std::cerr << "error en el bucle principal: " << e.what() << "\n";
+                if (!ventana.isOpen()) break;
             }
         }
 
-        window.close();
+        // cierra adecuadamente la ventana
+        ventana.close();
+        // breve pausa para asegurar el cierre
         sf::sleep(sf::milliseconds(50));
 
     } catch (const std::exception& e) {
-        std::cerr << "Error fatal: " << e.what() << "\n";
+        // maneja errores críticos de inicialización
+        std::cerr << "error fatal al iniciar: " << e.what() << "\n";
     }
 }

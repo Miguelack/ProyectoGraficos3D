@@ -1,80 +1,87 @@
+// archivo de cabecera de la clase CameraController
 #include "CameraController.hpp"
+// archivo de cabecera para el estado de entrada
 #include "InputHandler.hpp"
+// biblioteca para funciones matemáticas
 #include <cmath>
+// biblioteca para algoritmos como std::clamp
 #include <algorithm>
 
-const float CameraController::MOVEMENT_SPEED = 0.2f;
-const float CameraController::ROTATION_SPEED = 0.05f;
-const float CameraController::LERP_FACTOR = 0.2f;
+// inicialización de constantes estáticas
+const float CameraController::VELOCIDAD_MOVIMIENTO = 0.2f;
+const float CameraController::VELOCIDAD_ROTACION = 0.05f;
+const float CameraController::FACTOR_LERP = 0.2f;
 
-void CameraController::update(Camera& camera, const InputState& input, float deltaTime) {
-    // Asegurar que deltaTime sea válido
-    deltaTime = std::clamp(deltaTime, 0.001f, 0.1f);
+// actualiza la posición y rotación de la cámara
+void CameraController::actualizar(Camara& camara, const EstadoEntrada& entrada, float deltaTiempo) {
+    // asegura que deltaTime esté en un rango válido
+    deltaTiempo = std::clamp(deltaTiempo, 0.001f, 0.1f);
     
-    // Factor de movimiento basado en tiempo delta
-    const float moveFactor = MOVEMENT_SPEED * deltaTime * 60.0f;
-    const float rotFactor = ROTATION_SPEED * deltaTime * 60.0f;
+    // calcula factores de movimiento basados en el tiempo
+    const float factorMovimiento = VELOCIDAD_MOVIMIENTO * deltaTiempo * 60.0f;
+    const float factorRotacion = VELOCIDAD_ROTACION * deltaTiempo * 60.0f;
     
-    // Precalcular valores trigonométricos
-    const float sinY = sin(camera.rotY);
-    const float cosY = cos(camera.rotY);
+    // precalcula valores trigonométricos para mejor performance
+    const float senoY = sin(camara.rotY);
+    const float cosenoY = cos(camara.rotY);
     
-    // Movimiento relativo
-    if (input.w) {
-        camera.targetX += sinY * moveFactor;
-        camera.targetZ += cosY * moveFactor;
+    // movimiento relativo basado en entrada
+    if (entrada.w) { // adelante
+        camara.objetivoX += senoY * factorMovimiento;
+        camara.objetivoZ += cosenoY * factorMovimiento;
     }
-    if (input.s) {
-        camera.targetX -= sinY * moveFactor;
-        camera.targetZ -= cosY * moveFactor;
+    if (entrada.s) { // atrás
+        camara.objetivoX -= senoY * factorMovimiento;
+        camara.objetivoZ -= cosenoY * factorMovimiento;
     }
-    if (input.a) {
-        camera.targetX -= cosY * moveFactor;
-        camera.targetZ += sinY * moveFactor;
+    if (entrada.a) { // izquierda
+        camara.objetivoX -= cosenoY * factorMovimiento;
+        camara.objetivoZ += senoY * factorMovimiento;
     }
-    if (input.d) {
-        camera.targetX += cosY * moveFactor;
-        camera.targetZ -= sinY * moveFactor;
+    if (entrada.d) { // derecha
+        camara.objetivoX += cosenoY * factorMovimiento;
+        camara.objetivoZ -= senoY * factorMovimiento;
     }
     
-    // Movimiento vertical
-    if (input.space) camera.targetY -= moveFactor;
-    if (input.ctrl) camera.targetY += moveFactor;
+    // movimiento vertical
+    if (entrada.espacio) camara.objetivoY -= factorMovimiento;
+    if (entrada.ctrl) camara.objetivoY += factorMovimiento;
     
-    // Rotación
-    if (input.up) camera.rotX -= rotFactor;
-    if (input.down) camera.rotX += rotFactor;
-    if (input.left) camera.rotY -= rotFactor;
-    if (input.right) camera.rotY += rotFactor;
+    // rotación de cámara
+    if (entrada.arriba) camara.rotX -= factorRotacion;
+    if (entrada.abajo) camara.rotX += factorRotacion;
+    if (entrada.izquierda) camara.rotY -= factorRotacion;
+    if (entrada.derecha) camara.rotY += factorRotacion;
     
-    // Normalizar ángulos
-    camera.rotX = fmod(camera.rotX, 2.0f * M_PI);
-    camera.rotY = fmod(camera.rotY, 2.0f * M_PI);
+    // normaliza los ángulos de rotación
+    camara.rotX = fmod(camara.rotX, 2.0f * M_PI);
+    camara.rotY = fmod(camara.rotY, 2.0f * M_PI);
     
-    // Suavizado de movimiento (interpolación lineal)
-    camera.x += (camera.targetX - camera.x) * LERP_FACTOR;
-    camera.y += (camera.targetY - camera.y) * LERP_FACTOR;
-    camera.z += (camera.targetZ - camera.z) * LERP_FACTOR;
+    // aplica interpolación lineal para movimiento suave
+    camara.x += (camara.objetivoX - camara.x) * FACTOR_LERP;
+    camara.y += (camara.objetivoY - camara.y) * FACTOR_LERP;
+    camara.z += (camara.objetivoZ - camara.z) * FACTOR_LERP;
 }
 
-void CameraController::transformVertex(Vertice& v, const Camera& camera) {
-    // Traslación al espacio de la cámara
-    const float dx = v.x - camera.x;
-    const float dy = v.y - camera.y;
-    const float dz = v.z - camera.z;
+// transforma un vértice al espacio de la cámara
+void CameraController::transformarVertice(Vertice& v, const Camara& camara) {
+    // traslada el vértice a coordenadas relativas a la cámara
+    const float dx = v.x - camara.x;
+    const float dy = v.y - camara.y;
+    const float dz = v.z - camara.z;
     
-    // Precalcular valores trigonométricos
-    const float cosY = cos(camera.rotY);
-    const float sinY = sin(camera.rotY);
-    const float cosX = cos(camera.rotX);
-    const float sinX = sin(camera.rotX);
+    // precalcula valores trigonométricos para mejor performance
+    const float cosenoY = cos(camara.rotY);
+    const float senoY = sin(camara.rotY);
+    const float cosenoX = cos(camara.rotX);
+    const float senoX = sin(camara.rotX);
     
-    // Rotación Y (horizontal)
-    const float x1 = dx * cosY + dz * sinY;
-    const float z1 = -dx * sinY + dz * cosY;
+    // aplica rotación horizontal (eje Y)
+    const float x1 = dx * cosenoY + dz * senoY;
+    const float z1 = -dx * senoY + dz * cosenoY;
     
-    // Rotación X (vertical)
-    v.y = dy * cosX - z1 * sinX;
-    v.z = dy * sinX + z1 * cosX;
+    // aplica rotación vertical (eje X) y actualiza el vértice
+    v.y = dy * cosenoX - z1 * senoX;
+    v.z = dy * senoX + z1 * cosenoX;
     v.x = x1;
 }

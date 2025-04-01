@@ -2,7 +2,7 @@
 #include <cmath>
 #include <iostream>
 
-bool Graficos::clipLine(Vertice& v1, Vertice& v2, float nearPlane) {
+bool Graficos::recortarLinea(Vertice& v1, Vertice& v2, float nearPlane) {
     if (v1.z <= nearPlane && v2.z <= nearPlane) return false;
     
     if (v1.z <= nearPlane) {
