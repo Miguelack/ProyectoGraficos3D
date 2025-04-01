@@ -26,16 +26,17 @@ bool Graficos::recortarLinea(Vertice& v1, Vertice& v2, float nearPlane) {
 }
 
 sf::Vector2f Graficos::proyectarPunto(const Vertice& v, float scale) {
-    if (v.z > 0.5f) { // Aumentamos el near plane
-        float factor = 500.0f / (v.z + 500.0f);
-        float x = 512.f + v.x * factor * scale;
-        float y = 384.f + v.y * factor * scale;
+    if (v.z > 0.5f) { // Z_NEAR
+        // Proyección perspectiva corregida
+        float factor = scale / (v.z + 1.0f); // +1 evita división por cero
+        float x = 512.0f + v.x * factor; // Centro en 512x384 (para ventana 1024x768)
+        float y = 384.0f - v.y * factor; // Invertir eje Y
         
         if (!std::isnan(x) && !std::isnan(y)) {
             return sf::Vector2f(x, y);
         }
     }
-    return sf::Vector2f(-1000, -1000);
+    return sf::Vector2f(-10000, -10000); // Fuera de pantalla
 }
 
 void Graficos::transformarVertice(Vertice& v, const Camara& cam) {

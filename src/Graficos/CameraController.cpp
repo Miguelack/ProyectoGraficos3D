@@ -64,24 +64,21 @@ void CameraController::actualizar(Camara& camara, const EstadoEntrada& entrada, 
 }
 
 // transforma un vértice al espacio de la cámara
-void CameraController::transformarVertice(Vertice& v, const Camara& camara) {
-    // traslada el vértice a coordenadas relativas a la cámara
-    const float dx = v.x - camara.x;
-    const float dy = v.y - camara.y;
-    const float dz = v.z - camara.z;
-    
-    // precalcula valores trigonométricos para mejor performance
-    const float cosenoY = cos(camara.rotY);
-    const float senoY = sin(camara.rotY);
-    const float cosenoX = cos(camara.rotX);
-    const float senoX = sin(camara.rotX);
-    
-    // aplica rotación horizontal (eje Y)
-    const float x1 = dx * cosenoY + dz * senoY;
-    const float z1 = -dx * senoY + dz * cosenoY;
-    
-    // aplica rotación vertical (eje X) y actualiza el vértice
-    v.y = dy * cosenoX - z1 * senoX;
-    v.z = dy * senoX + z1 * cosenoX;
+void CameraController::transformarVertice(Vertice& v, const Camara& cam) {
+    // Convertir a coordenadas relativas a la cámara
+    float dx = v.x - cam.x;
+    float dy = v.y - cam.y;
+    float dz = v.z - cam.z;
+
+    // Rotación Y (horizontal)
+    float cosY = cos(cam.rotY), sinY = sin(cam.rotY);
+    float x1 = dx * cosY + dz * sinY;
+    float z1 = -dx * sinY + dz * cosY;
+
+    // Rotación X (vertical) - limitada a ±85 grados
+    float rotX = std::clamp(cam.rotX, -1.48f, 1.48f); // ~85 grados en radianes
+    float cosX = cos(rotX), sinX = sin(rotX);
+    v.y = dy * cosX - z1 * sinX;
+    v.z = dy * sinX + z1 * cosX;
     v.x = x1;
 }

@@ -1,15 +1,21 @@
 #include "Renderer.hpp"
 #include "Graficos.hpp"
 #include "CameraController.hpp"
-#include <iostream>
-#include <cmath>
 #include <algorithm>
-#include <SFML/Graphics.hpp>
+#include <cmath>
 
-// Constantes de color
-const sf::Color COLOR_CARA_OPACA(255, 0, 0, 255);    // Rojo completamente opaco
-const sf::Color COLOR_ARISTAS(180, 140, 255, 255);   // Color aristas (morado claro)
-const sf::Color COLOR_VERTICES(200, 160, 255, 255);  // Color vértices
+// Configuración visual estilo Blender
+const sf::Color FONDO(45, 45, 60); // Gris azulado oscuro
+const sf::Color COLOR_CARA_OPACA(80, 160, 200, 180); // Azul claro semitransparente
+const sf::Color COLOR_ARISTAS(255, 200, 50, 220); // Amarillo-anaranjado
+const sf::Color COLOR_VERTICES(240, 240, 240, 255); // Blanco brillante
+
+// Parámetros de renderizado
+constexpr float Z_NEAR = 0.05f;
+constexpr float Z_FAR = 100.0f;
+constexpr float FOV = 60.0f * 3.14159f / 180.0f; // 60° en radianes
+constexpr float ASPECT_RATIO = 1024.0f / 768.0f;
+constexpr float VIEWPORT_SCALE = 400.0f;
 
 void Renderer::generarCaras(const std::vector<Vertice>& /*vertices*/,
                           std::vector<std::vector<int>>& caras,
@@ -22,7 +28,7 @@ void Renderer::generarCaras(const std::vector<Vertice>& /*vertices*/,
             {2,3,7,6}, {0,3,7,4}, {1,2,6,5}
         };
     } 
-    else if (tipoModelo == 5) { // Pirámide (orden corregido)
+    else if (tipoModelo == 5) { // Pirámide
         caras = {
             {0,3,2,1},  // Base cuadrada (orden antihorario)
             {0,1,4},    // Caras laterales
@@ -30,132 +36,6 @@ void Renderer::generarCaras(const std::vector<Vertice>& /*vertices*/,
             {2,3,4},
             {3,0,4}
         };
-    }
-}
-
-bool esCaraVisible(const Vertice& v1, const Vertice& v2, const Vertice& v3, const Vertice& camPos) {
-    // Calcula vectores de la cara
-    Vec3 edge1 = {v2.x - v1.x, v2.y - v1.y, v2.z - v1.z};
-    Vec3 edge2 = {v3.x - v1.x, v3.y - v1.y, v3.z - v1.z};
-    
-    // Calcula la normal de la cara
-    Vec3 normal = crossProduct(edge1, edge2).normalize();
-    
-    // Vector de vista
-    Vec3 view = {camPos.x - v1.x, camPos.y - v1.y, camPos.z - v1.z};
-    
-    // Producto punto
-    float dot = normal.x * view.x + normal.y * view.y + normal.z * view.z;
-    
-    return dot > 0;
-}
-
-void Renderer::renderizarModelo(sf::RenderWindow& ventana, 
-                              const std::vector<Vertice>& vertices,
-                              const std::vector<std::pair<int, int>>& conexiones,
-                              const Camara& camara,
-                              ModoRenderizado modo) {
-    if (vertices.empty() || !ventana.isOpen()) return;
-
-    // Configuración de estados de renderizado
-    sf::RenderStates states;
-    states.blendMode = sf::BlendNone;
-
-    // 1. Renderizar caras sólidas (opacas)
-    if (modo == MODO_SOLIDO || modo == MODO_MIXTO) {
-        std::vector<std::vector<int>> caras;
-        generarCaras(vertices, caras, vertices.size());
-        
-        // Posición de la cámara para backface culling
-        Vertice camPos = {camara.x, camara.y, camara.z};
-        
-        for (const auto& cara : caras) {
-            if (cara.size() < 3) continue;
-
-            // Verificar visibilidad de la cara
-            Vertice v1 = vertices[cara[0]];
-            Vertice v2 = vertices[cara[1]];
-            Vertice v3 = vertices[cara.size() > 2 ? cara[2] : cara[1]]; // Para triángulos y quads
-            
-            CameraController::transformarVertice(v1, camara);
-            CameraController::transformarVertice(v2, camara);
-            CameraController::transformarVertice(v3, camara);
-            
-            if (!esCaraVisible(v1, v2, v3, camPos)) continue;
-
-            sf::VertexArray poligono(cara.size() == 4 ? sf::Quads : sf::Triangles, cara.size());
-            bool caraValida = true;
-            
-            for (size_t i = 0; i < cara.size(); ++i) {
-                if (static_cast<size_t>(cara[i]) >= vertices.size()) {
-                    caraValida = false;
-                    break;
-                }
-                
-                Vertice v = vertices[cara[i]];
-                CameraController::transformarVertice(v, camara);
-                
-                if (v.z <= 0.1f) {
-                    caraValida = false;
-                    break;
-                }
-                
-                poligono[i].position = Graficos::proyectarPunto(v);
-                poligono[i].color = COLOR_CARA_OPACA;
-            }
-            
-            if (caraValida) {
-                ventana.draw(poligono, states);
-            }
-        }
-    }
-
-    // 2. Renderizar aristas (versión corregida para SFML)
-    if (modo == MODO_LINEAS || modo == MODO_MIXTO) {
-        std::vector<sf::Vertex> lineasVertices;
-        
-        for (const auto& conn : conexiones) {
-            if (static_cast<size_t>(conn.first) >= vertices.size() || 
-                static_cast<size_t>(conn.second) >= vertices.size()) {
-                continue;
-            }
-
-            Vertice v1 = vertices[conn.first];
-            Vertice v2 = vertices[conn.second];
-            
-            CameraController::transformarVertice(v1, camara);
-            CameraController::transformarVertice(v2, camara);
-            
-            if (v1.z > 0.1f && v2.z > 0.1f && Graficos::recortarLinea(v1, v2)) {
-                lineasVertices.emplace_back(Graficos::proyectarPunto(v1), COLOR_ARISTAS);
-                lineasVertices.emplace_back(Graficos::proyectarPunto(v2), COLOR_ARISTAS);
-            }
-        }
-        
-        if (!lineasVertices.empty()) {
-            ventana.draw(&lineasVertices[0], lineasVertices.size(), sf::Lines, states);
-        }
-    }
-    
-    // 3. Renderizar vértices (versión corregida para SFML)
-    if (modo != MODO_SOLIDO) {
-        std::vector<sf::Vertex> puntosVertices;
-        
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Vertice v = vertices[i];
-            CameraController::transformarVertice(v, camara);
-            
-            if (v.z > 0.1f) {
-                sf::Vector2f pos = Graficos::proyectarPunto(v);
-                if (pos.x > -1000.0f) {
-                    puntosVertices.emplace_back(pos, COLOR_VERTICES);
-                }
-            }
-        }
-        
-        if (!puntosVertices.empty()) {
-            ventana.draw(&puntosVertices[0], puntosVertices.size(), sf::Points, states);
-        }
     }
 }
 
@@ -176,5 +56,127 @@ void Renderer::configurarConexiones(const std::vector<Vertice>& vertices,
             {0,1}, {1,2}, {2,3}, {3,0},  // Base cuadrada
             {0,4}, {1,4}, {2,4}, {3,4}   // Aristas laterales
         };
+    }
+}
+
+void Renderer::renderizarModelo(sf::RenderWindow& ventana, 
+                              const std::vector<Vertice>& vertices,
+                              const std::vector<std::pair<int, int>>& conexiones,
+                              const Camara& camara,
+                              ModoRenderizado modo) {
+    if (vertices.empty() || !ventana.isOpen()) return;
+
+    ventana.clear(FONDO);
+
+    // 1. Pre-transformación y proyección de vértices
+    std::vector<sf::Vector2f> verticesProyectados;
+    verticesProyectados.reserve(vertices.size());
+    
+    for (const auto& v : vertices) {
+        Vertice vt = v;
+        CameraController::transformarVertice(vt, camara);
+
+        // Proyección perspectiva profesional
+        if (vt.z < -Z_NEAR && vt.z > -Z_FAR) {
+            float factor = 1.0f / (-vt.z * tan(FOV/2));
+            float x = vt.x * factor * ASPECT_RATIO * VIEWPORT_SCALE + 512.0f;
+            float y = -vt.y * factor * VIEWPORT_SCALE + 384.0f;
+            
+            verticesProyectados.emplace_back(x, y);
+        } else {
+            verticesProyectados.emplace_back(-10000, -10000);
+        }
+    }
+
+    // 2. Renderizado de caras con ordenación por profundidad
+    if (modo == MODO_SOLIDO || modo == MODO_MIXTO) {
+        std::vector<std::vector<int>> caras;
+        generarCaras(vertices, caras, vertices.size());
+
+        // Ordenar caras por profundidad
+        std::vector<std::pair<float, size_t>> carasOrdenadas;
+        for (size_t i = 0; i < caras.size(); ++i) {
+            float zSum = 0;
+            bool valida = true;
+            for (int idx : caras[i]) {
+                if (idx < 0 || static_cast<size_t>(idx) >= vertices.size()) {
+                    valida = false;
+                    break;
+                }
+                zSum += vertices[idx].z;
+            }
+            if (valida && !caras[i].empty()) {
+                carasOrdenadas.emplace_back(zSum / caras[i].size(), i);
+            }
+        }
+
+        std::sort(carasOrdenadas.begin(), carasOrdenadas.end(), 
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+
+        // Renderizar caras ordenadas
+        for (const auto& [z, i] : carasOrdenadas) {
+            const auto& cara = caras[i];
+            sf::VertexArray poligono(cara.size() == 4 ? sf::Quads : sf::Triangles);
+            bool visible = true;
+
+            for (int idx : cara) {
+                if (idx < 0 || static_cast<size_t>(idx) >= verticesProyectados.size()) {
+                    visible = false;
+                    break;
+                }
+                
+                const auto& pos = verticesProyectados[idx];
+                if (pos.x < -500 || pos.x > 1500 || pos.y < -500 || pos.y > 1500) {
+                    visible = false;
+                    break;
+                }
+                
+                poligono.append(sf::Vertex(pos, COLOR_CARA_OPACA));
+            }
+
+            if (visible && poligono.getVertexCount() >= 3) {
+                ventana.draw(poligono);
+            }
+        }
+    }
+
+    // 3. Renderizado de aristas
+    if (modo == MODO_LINEAS || modo == MODO_MIXTO) {
+        sf::VertexArray lineas(sf::Lines);
+        
+        for (const auto& conn : conexiones) {
+            if (conn.first < 0 || static_cast<size_t>(conn.first) >= verticesProyectados.size() ||
+                conn.second < 0 || static_cast<size_t>(conn.second) >= verticesProyectados.size()) {
+                continue;
+            }
+
+            const auto& p1 = verticesProyectados[conn.first];
+            const auto& p2 = verticesProyectados[conn.second];
+            
+            float dx = p1.x - p2.x;
+            float dy = p1.y - p2.y;
+            float distancia2 = dx*dx + dy*dy;
+            
+            if (distancia2 > 0 && distancia2 < 500000 &&
+                p1.x > -300 && p1.x < 1300 && p2.x > -300 && p2.x < 1300) {
+                lineas.append(sf::Vertex(p1, COLOR_ARISTAS));
+                lineas.append(sf::Vertex(p2, COLOR_ARISTAS));
+            }
+        }
+        
+        ventana.draw(lineas);
+    }
+
+    // 4. Renderizado de vértices
+    if (modo != MODO_SOLIDO) {
+        sf::VertexArray puntos(sf::Points);
+        
+        for (const auto& pos : verticesProyectados) {
+            if (pos.x > 0 && pos.x < 1024 && pos.y > 0 && pos.y < 768) {
+                puntos.append(sf::Vertex(pos, COLOR_VERTICES));
+            }
+        }
+        
+        ventana.draw(puntos);
     }
 }
