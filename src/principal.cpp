@@ -2,20 +2,34 @@
 #include <iostream>
 #include <cstdlib>
 #include <stdexcept>
-#include <sys/stat.h>  // <-- Añade este include para la estructura stat
-
+#include <sys/stat.h>
 #include <SFML/Graphics.hpp>
 #include "Cache/Cache.hpp"
 #include "DataGenerators/GeneradorDatos.hpp"
 #include "DataGenerators/GeneradorModelos3D.hpp"
 #include "Graficos/ModelViewer.hpp"
 
-int mostrarMenu() {
+void limpiarTerminal() {
+    // Clear terminal screen in a cross-platform way
+    #ifdef _WIN32
+    system("cls");
+    #else
+    system("clear");
+    #endif
+}
+
+void esperarEnter() {
+    std::cout << "\nPresione Enter para continuar...";
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    limpiarTerminal();
+}
+
+int mostrarMenuPrincipal() {
     int opcion;
     while (true) {
-        std::cout << "\n=== MENU DE VISUALIZACION 3D ===\n";
-        std::cout << "1. Visualizar Cubo\n";
-        std::cout << "2. Visualizar Piramide\n";
+        std::cout << "\n=== MENU PRINCIPAL ===\n";
+        std::cout << "1. Mostrar estadisticas de Cache\n";
+        std::cout << "2. Modelar figuras 3D\n";
         std::cout << "3. Salir\n";
         std::cout << "Seleccione una opcion (1-3): ";
         
@@ -33,6 +47,36 @@ int mostrarMenu() {
     }
 }
 
+int mostrarMenuModelado() {
+    int opcion;
+    while (true) {
+        std::cout << "\n=== MENU DE MODELADO 3D ===\n";
+        std::cout << "1. Visualizar Cubo\n";
+        std::cout << "2. Visualizar Piramide\n";
+        std::cout << "3. Volver al menu principal\n";
+        std::cout << "Seleccione una opcion (1-3): ";
+        
+        if (std::cin >> opcion) {
+            if (opcion >= 1 && opcion <= 3) {
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return opcion;
+            }
+        } else {
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        
+        std::cout << "Opcion no valida. Intente nuevamente.\n";
+    }
+}
+
+void mostrarEstadisticasCache(const Cache& cache, double simTime) {
+    std::cout << "\n=== Estadisticas de Cache ===\n";
+    std::cout << "Tiempo simulacion: " << simTime << " ms\n";
+    cache.imprimirEstadisticas();
+    esperarEnter();
+}
+
 bool cargarFuente(sf::Font& font, const std::string& path) {
     struct stat buffer;   
     if (stat(path.c_str(), &buffer) != 0) {
@@ -46,9 +90,8 @@ int main() {
     try {
         Cache cache(1024, 64, 4);
 
-        auto startGen = std::chrono::high_resolution_clock::now();
+        // Eliminadas las variables no utilizadas para generación
         std::vector<int> addresses = GeneradorDatos::generarSecuenciaOptimizada(1024, 64, 4);
-        auto endGen = std::chrono::high_resolution_clock::now();
 
         auto startSim = std::chrono::high_resolution_clock::now();
         for (size_t i = 0; i < addresses.size(); ++i) {
@@ -58,12 +101,6 @@ int main() {
 
         double simTime = std::chrono::duration_cast<std::chrono::milliseconds>(
             endSim - startSim).count();
-
-        std::cout << "=== Estadísticas de Simulación ===\n";
-        std::cout << "Tiempo generación: " << std::chrono::duration_cast<std::chrono::milliseconds>(
-            endGen - startGen).count() << " ms\n";
-        std::cout << "Tiempo simulación: " << simTime << " ms\n";
-        cache.imprimirEstadisticas();
 
         sf::Font font;
         bool fontLoaded = cargarFuente(font, "arial.ttf");
@@ -75,17 +112,30 @@ int main() {
         int option;
         
         do {
-            option = mostrarMenu();
+            option = mostrarMenuPrincipal();
             
             switch (option) {
                 case 1: {
-                    std::vector<Vertice> cube = GeneradorModelos3D::generarCubo(2.0f);
-                    ModelViewer::visualize(cube, cache, simTime, graphicMode, font);
+                    mostrarEstadisticasCache(cache, simTime);
                     break;
                 }
                 case 2: {
-                    std::vector<Vertice> pyramid = GeneradorModelos3D::generarPiramide(3.0f, 2.0f);
-                    ModelViewer::visualize(pyramid, cache, simTime, graphicMode, font);
+                    int modelOption = mostrarMenuModelado();
+                    switch (modelOption) {
+                        case 1: {
+                            std::vector<Vertice> cube = GeneradorModelos3D::generarCubo(2.0f);
+                            ModelViewer::visualize(cube, cache, simTime, graphicMode, font);
+                            break;
+                        }
+                        case 2: {
+                            std::vector<Vertice> pyramid = GeneradorModelos3D::generarPiramide(3.0f, 2.0f);
+                            ModelViewer::visualize(pyramid, cache, simTime, graphicMode, font);
+                            break;
+                        }
+                        case 3:
+                            limpiarTerminal();
+                            break;
+                    }
                     break;
                 }
                 case 3:
