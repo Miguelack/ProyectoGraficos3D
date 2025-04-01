@@ -28,6 +28,8 @@ public:
     static void generarCaras(const std::vector<Vertice>& vertices,
                            std::vector<std::vector<int>>& caras,
                            size_t tipoModelo);
+                           
+    static void dibujarPuntero(sf::RenderWindow& ventana, const sf::Color& color = sf::Color::White);
 };
 
 #endif // RENDERER_HPP

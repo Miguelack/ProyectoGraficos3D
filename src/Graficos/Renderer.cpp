@@ -180,3 +180,38 @@ void Renderer::renderizarModelo(sf::RenderWindow& ventana,
         ventana.draw(puntos);
     }
 }
+
+void Renderer::dibujarPuntero(sf::RenderWindow& ventana, const sf::Color& color) {
+    // Crear una simple cruz (punto central + 4 líneas)
+    float centroX = ventana.getSize().x / 2.0f;
+    float centroY = ventana.getSize().y / 2.0f;
+    float tamaño = 15.0f;
+    float grosor = 2.0f;
+    float espacio = 5.0f;
+
+    // Punto central
+    sf::CircleShape punto(2.0f);
+    punto.setFillColor(color);
+    punto.setPosition(centroX - 2.0f, centroY - 2.0f);
+    ventana.draw(punto);
+
+    // Línea horizontal izquierda
+    sf::RectangleShape lineaH(sf::Vector2f(tamaño, grosor));
+    lineaH.setFillColor(color);
+    lineaH.setPosition(centroX - tamaño - espacio, centroY - grosor/2.0f);
+    ventana.draw(lineaH);
+
+    // Línea horizontal derecha
+    lineaH.setPosition(centroX + espacio, centroY - grosor/2.0f);
+    ventana.draw(lineaH);
+
+    // Línea vertical superior
+    sf::RectangleShape lineaV(sf::Vector2f(grosor, tamaño));
+    lineaV.setFillColor(color);
+    lineaV.setPosition(centroX - grosor/2.0f, centroY - tamaño - espacio);
+    ventana.draw(lineaV);
+
+    // Línea vertical inferior
+    lineaV.setPosition(centroX - grosor/2.0f, centroY + espacio);
+    ventana.draw(lineaV);
+}

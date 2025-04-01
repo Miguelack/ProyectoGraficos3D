@@ -14,13 +14,13 @@ void ModelViewer::visualizar(const std::vector<Vertice>& vertices,
                            double tiempoSimulacion, 
                            bool modoGrafico, 
                            const sf::Font& fuente,
-                           sf::RenderWindow& ventana) {  // Añadido parámetro ventana
+                           sf::RenderWindow& ventana) {
     if (!modoGrafico) {
         return;
     }
 
     try {
-        // Configuración avanzada de la ventana (ya no se crea aquí, se recibe como parámetro)
+        // Configuración avanzada de la ventana
         if (!ventana.isOpen()) {
             throw std::runtime_error("Ventana recibida no está abierta");
         }
@@ -74,6 +74,10 @@ void ModelViewer::visualizar(const std::vector<Vertice>& vertices,
                 // Renderizado
                 ventana.clear(sf::Color(45, 45, 60)); // Fondo gris azulado
                 Renderer::renderizarModelo(ventana, vertices, conexiones, camara, Renderer::MODO_MIXTO);
+                
+                // Dibujar puntero FPS (cruz centrada blanca)
+                Renderer::dibujarPuntero(ventana, sf::Color::White);
+                
                 UIHandler::dibujar(interfaz, ventana);
                 ventana.display();
 
