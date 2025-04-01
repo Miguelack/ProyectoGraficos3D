@@ -1,6 +1,7 @@
 #include "Graficos.hpp"
 #include <cmath>
 #include <iostream>
+#include <glm/glm.hpp>
 
 bool Graficos::recortarLinea(Vertice& v1, Vertice& v2, float nearPlane) {
     if (v1.z <= nearPlane && v2.z <= nearPlane) return false;
@@ -38,43 +39,25 @@ sf::Vector2f Graficos::proyectarPunto(const Vertice& v, float scale) {
 }
 
 void Graficos::transformarVertice(Vertice& v, const Camara& cam) {
-    float rotY = fmod(cam.rotY, 2*M_PI);
-    float rotX = fmod(cam.rotX, 2*M_PI);
-    
+    // Convertir a coordenadas relativas a la cámara
     float dx = v.x - cam.x;
     float dy = v.y - cam.y;
     float dz = v.z - cam.z;
     
-    float cosY = cos(rotY), sinY = sin(rotY);
+    // Rotación en Y (horizontal)
+    float cosY = cos(cam.rotY), sinY = sin(cam.rotY);
     float x1 = dx * cosY + dz * sinY;
     float z1 = -dx * sinY + dz * cosY;
     
-    float cosX = cos(rotX), sinX = sin(rotX);
+    // Rotación en X (vertical)
+    float cosX = cos(cam.rotX), sinX = sin(cam.rotX);
     v.y = dy * cosX - z1 * sinX;
     v.z = dy * sinX + z1 * cosX;
     v.x = x1;
     
+    // Limitar valores extremos
     const float MAX_VAL = 1e6f;
     v.x = clamp(v.x, -MAX_VAL, MAX_VAL);
     v.y = clamp(v.y, -MAX_VAL, MAX_VAL);
     v.z = clamp(v.z, -MAX_VAL, MAX_VAL);
-}
-
-// Funciones originales
-void Graficos::transformar(std::vector<Vertice>& vertices, float matriz[4][4]) {
-    for (auto& v : vertices) {
-        float x = v.x * matriz[0][0] + v.y * matriz[1][0] + v.z * matriz[2][0] + matriz[3][0];
-        float y = v.x * matriz[0][1] + v.y * matriz[1][1] + v.z * matriz[2][1] + matriz[3][1];
-        float z = v.x * matriz[0][2] + v.y * matriz[1][2] + v.z * matriz[2][2] + matriz[3][2];
-        v = {x, y, z};
-    }
-}
-
-void Graficos::proyectar(std::vector<Vertice>& vertices) {
-    for (auto& v : vertices) {
-        if (v.z != 0) {  // Protección contra división por cero
-            v.x = v.x / v.z;
-            v.y = v.y / v.z;
-        }
-    }
 }

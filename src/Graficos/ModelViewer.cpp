@@ -91,8 +91,8 @@ void ModelViewer::visualizar(const std::vector<Vertice>& vertices,
 
                 // prepara el nuevo cuadro
                 ventana.clear(sf::Color::Black); // fondo negro
-                // dibuja el modelo 3D con sus conexiones
-                Renderer::renderizarModelo(ventana, vertices, conexiones, camara);
+                // dibuja el modelo 3D con modo mixto (caras + aristas)
+                Renderer::renderizarModelo(ventana, vertices, conexiones, camara, Renderer::MODO_MIXTO);
                 // dibuja los elementos de la interfaz
                 UIHandler::dibujar(interfaz, ventana);
                 // muestra el cuadro terminado

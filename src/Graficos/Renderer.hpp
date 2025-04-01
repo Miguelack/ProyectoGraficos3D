@@ -1,28 +1,33 @@
-// protección para evitar inclusiones múltiples
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
-// biblioteca para gráficos de SFML
 #include <SFML/Graphics.hpp>
-// contenedor para almacenar pares de conexiones
 #include <vector>
-// definición de la estructura Vertice
 #include "Common/Vertice.hpp"
-// controlador de cámara para transformaciones
 #include "CameraController.hpp"
 
-// clase para manejar el renderizado de modelos 3D
 class Renderer {
 public:
-    // configura las conexiones entre vértices para un modelo
+    // modo de renderizado para controlar la visualización
+    enum ModoRenderizado {
+        MODO_LINEAS,      // solo aristas
+        MODO_SOLIDO,      // caras sólidas
+        MODO_MIXTO        // aristas sobre caras
+    };
+
     static void configurarConexiones(const std::vector<Vertice>& vertices, 
-                                   std::vector<std::pair<int, int>>& connections);
+                                   std::vector<std::pair<int, int>>& conexiones);
     
-    // renderiza un modelo 3D en la ventana especificada
-    static void renderizarModelo(sf::RenderWindow& window, 
+    static void renderizarModelo(sf::RenderWindow& ventana, 
                                const std::vector<Vertice>& vertices,
-                               const std::vector<std::pair<int, int>>& connections,
-                               const Camara& camera);
+                               const std::vector<std::pair<int, int>>& conexiones,
+                               const Camara& camara,
+                               ModoRenderizado modo = MODO_MIXTO);
+    
+    // nuevo método para generar caras
+    static void generarCaras(const std::vector<Vertice>& vertices,
+                           std::vector<std::vector<int>>& caras,
+                           size_t tipoModelo);
 };
 
 #endif // RENDERER_HPP

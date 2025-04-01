@@ -22,7 +22,7 @@ void limpiarTerminal() {
 
 // funcion para pausar la ejecucion hasta que se presione enter
 void esperarEnter() {
-    std::cout << "\npresione enter para continuar...";
+    std::cout << "\nPresione enter para continuar...";
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     limpiarTerminal();
 }
@@ -31,11 +31,11 @@ void esperarEnter() {
 int mostrarMenuPrincipal() {
     int opcion;
     while (true) {
-        std::cout << "\n=== menu principal ===\n";
-        std::cout << "1. mostrar estadisticas de cache\n";
-        std::cout << "2. modelar figuras 3d\n";
-        std::cout << "3. salir\n";
-        std::cout << "seleccione una opcion (1-3): ";
+        std::cout << "\n=== MENU PRINCIPAL ===\n";
+        std::cout << "1. Mostrar estadisticas de cache\n";
+        std::cout << "2. Modelar figuras 3d\n";
+        std::cout << "3. Salir\n";
+        std::cout << "Seleccione una opcion (1-3): ";
         
         if (std::cin >> opcion) {
             if (opcion >= 1 && opcion <= 3) {
@@ -47,7 +47,7 @@ int mostrarMenuPrincipal() {
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
         
-        std::cout << "opcion no valida. intente nuevamente.\n";
+        std::cout << "Opcion no valida. intente nuevamente.\n";
     }
 }
 
@@ -56,10 +56,10 @@ int mostrarMenuModelado() {
     int opcion;
     while (true) {
         std::cout << "\n=== menu de modelado 3d ===\n";
-        std::cout << "1. visualizar cubo\n";
-        std::cout << "2. visualizar piramide\n";
-        std::cout << "3. volver al menu principal\n";
-        std::cout << "seleccione una opcion (1-3): ";
+        std::cout << "1. Visualizar cubo\n";
+        std::cout << "2. Visualizar piramide\n";
+        std::cout << "3. Volver al menu principal\n";
+        std::cout << "Seleccione una opcion (1-3): ";
         
         if (std::cin >> opcion) {
             if (opcion >= 1 && opcion <= 3) {
@@ -71,14 +71,14 @@ int mostrarMenuModelado() {
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
         
-        std::cout << "opcion no valida. intente nuevamente.\n";
+        std::cout << "Opcion no valida. intente nuevamente.\n";
     }
 }
 
 // muestra las estadisticas de la cache en la consola
 void mostrarEstadisticasCache(const Cache& cache, double simTime) {
-    std::cout << "\n=== estadisticas de cache ===\n";
-    std::cout << "tiempo simulacion: " << simTime << " ms\n";
+    std::cout << "\n=== Estadisticas de cache ===\n";
+    std::cout << "Tiempo simulacion: " << simTime << " ms\n";
     cache.imprimirEstadisticas();
     esperarEnter();
 }
@@ -87,7 +87,7 @@ void mostrarEstadisticasCache(const Cache& cache, double simTime) {
 bool cargarFuente(sf::Font& font, const std::string& path) {
     struct stat buffer;   
     if (stat(path.c_str(), &buffer) != 0) {
-        std::cerr << "archivo de fuente no encontrado: " << path << "\n";
+        std::cerr << "Archivo de fuente no encontrado: " << path << "\n";
         return false;
     }
     return font.loadFromFile(path);
@@ -117,7 +117,7 @@ int main() {
         sf::Font font;
         bool fontLoaded = cargarFuente(font, "arial.ttf");
         if (!fontLoaded) {
-            std::cerr << "advertencia: usando fuente por defecto\n";
+            std::cerr << "Advertencia: usando fuente por defecto\n";
         }
 
         // determina si el modo grafico esta disponible
@@ -157,16 +157,16 @@ int main() {
                     break;
                 }
                 case 3:
-                    std::cout << "saliendo del programa...\n";
+                    std::cout << "Saliendo del programa...\n";
                     break;
             }
         } while (option != 3);
 
     } catch (const std::exception& e) {
-        std::cerr << "\nerror: " << e.what() << std::endl;
+        std::cerr << "\nError: " << e.what() << std::endl;
         return EXIT_FAILURE;
     } catch (...) {
-        std::cerr << "\nerror desconocido\n";
+        std::cerr << "\nError desconocido\n";
         return EXIT_FAILURE;
     }
 
