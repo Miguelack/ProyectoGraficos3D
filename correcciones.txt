@@ -1,7 +1,0 @@
-Resolver el problema del caché (sí se puede, mejorar estructura)
-
-Modelar un objeto de la vida real (DataSet)
-
-Colocar un informe detallado en el terminal o UI para tomar una decisión (interfaz)
-
-YouTube Oculto, Informe y Diapositivas
